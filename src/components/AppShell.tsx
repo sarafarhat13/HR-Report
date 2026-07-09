@@ -6,9 +6,8 @@ import type {
   INavbarVisibility,
   ModusWcSelectCustomEvent,
 } from '@trimble-oss/moduswebcomponents';
-import { ROLE_NAV, ROLE_ROUTES, useRole, type Role } from '../roles';
+import { ROLE_ROUTES, useRole, type Role } from '../roles';
 import IconRail from './IconRail';
-import SettingsPanel from './SettingsPanel';
 import RoleSwitcher from './RoleSwitcher';
 
 const NAVBAR_VISIBILITY: INavbarVisibility = {
@@ -36,7 +35,6 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const role = useRole();
   const navigate = useNavigate();
-  const section = ROLE_NAV[role].sectionTitle;
 
   const handleRoleChange = useCallback(
     (e: ModusWcSelectCustomEvent<InputEvent>) => {
@@ -68,10 +66,9 @@ export default function AppShell({ children }: AppShellProps) {
         <IconRail role={role} />
 
         <div className="app-main">
-          <header className="page-title-bar">{section}</header>
+          <header className="page-title-bar">Paystub Audit Report</header>
 
           <div className="app-workspace">
-            <SettingsPanel role={role} />
             <main className="app-content">{children}</main>
           </div>
         </div>

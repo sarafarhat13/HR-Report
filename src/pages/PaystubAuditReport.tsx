@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ModusWcAlert,
   ModusWcAutocomplete,
-  ModusWcBreadcrumbs,
   ModusWcButton,
   ModusWcCard,
   ModusWcDate,
@@ -13,14 +12,13 @@ import {
 } from '@trimble-oss/moduswebcomponents-react';
 import type {
   IAutocompleteItem,
-  IBreadcrumb,
   IInputFeedbackProp,
   ITableColumn,
   ModusWcAutocompleteCustomEvent,
   ModusWcDateCustomEvent,
   ModusWcTableCustomEvent,
 } from '@trimble-oss/moduswebcomponents';
-import { ROLE_NAV, useRole } from '../roles';
+import { useRole } from '../roles';
 import {
   COMPANIES,
   EMPLOYEES,
@@ -96,8 +94,6 @@ function buildPaystub(check: CheckRecord): PaystubBreakdown {
 export default function PaystubAuditReport() {
   const role = useRole();
   const isGlobalAdmin = role === 'globalAdmin';
-  const group = ROLE_NAV[role];
-
   const [params, setParams] = useState<SearchParams>(INITIAL_PARAMS);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<AuditResult | null>(null);
@@ -164,15 +160,6 @@ export default function PaystubAuditReport() {
         visibleInMenu: true,
       })),
     []
-  );
-
-  const breadcrumbs = useMemo<IBreadcrumb[]>(
-    () => [
-      { label: 'Main Menu' },
-      { label: group.sectionTitle },
-      { label: 'Paystub Audit Report' },
-    ],
-    [group.sectionTitle]
   );
 
   // Generic controlled-input updater keeps every handler stable and leak-free.
@@ -317,8 +304,6 @@ export default function PaystubAuditReport() {
 
   return (
     <div className="report-page">
-      <ModusWcBreadcrumbs aria-label="Breadcrumbs" items={breadcrumbs} />
-
       <header className="report-header">
         <ModusWcTypography hierarchy="h1" size="2xl" weight="bold">
           Paystub Check Audit Report
