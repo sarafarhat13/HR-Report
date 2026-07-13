@@ -403,7 +403,7 @@ export default function PaystubAuditReport() {
           </ModusWcTypography>
 
           <div className="form-actions">
-            <ModusWcButton color="secondary" variant="outlined" type="button" onButtonClick={handleReset}>
+            <ModusWcButton color="neutral" variant="outlined" type="button" onButtonClick={handleReset}>
               Clear
             </ModusWcButton>
             <ModusWcButton color="primary" type="submit" onButtonClick={handleRun}>
