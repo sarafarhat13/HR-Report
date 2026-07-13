@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
-  ModusWcAlert,
   ModusWcAutocomplete,
   ModusWcButton,
   ModusWcCard,
@@ -284,13 +283,6 @@ export default function PaystubAuditReport() {
   const showResults = hasSearched && rows.length > 0;
   const showEmptyState = hasSearched && rows.length === 0;
 
-  // The whole point of the audit: reconcile what payroll generated against what
-  // actually landed in ESS. Any positive delta means paystubs are missing.
-  const expected = result?.totalExpected ?? 0;
-  const found = rows.length;
-  const missing = Math.max(0, expected - found);
-  const hasDiscrepancy = missing > 0;
-
   const selectedEmployeeName = selectedCheck
     ? EMPLOYEES.find((e) => e.code === selectedCheck.employeeCode)?.name ??
       selectedCheck.employeeCode
@@ -413,63 +405,10 @@ export default function PaystubAuditReport() {
         </form>
       </ModusWcCard>
 
-      {/* --- KPI summary cards --- */}
-      {showResults && (
-        <section className="kpi-grid" aria-label="Summary metrics">
-          <ModusWcCard bordered padding="compact" customClass="kpi-card">
-            <span slot="subtitle">Total Expected Checks</span>
-            <ModusWcTypography hierarchy="h2" size="3xl" weight="bold">
-              {String(expected)}
-            </ModusWcTypography>
-          </ModusWcCard>
-
-          <ModusWcCard bordered padding="compact" customClass="kpi-card">
-            <span slot="subtitle">Checks Found in ESS</span>
-            <ModusWcTypography hierarchy="h2" size="3xl" weight="bold">
-              {String(found)}
-            </ModusWcTypography>
-          </ModusWcCard>
-
-          <ModusWcCard
-            bordered
-            padding="compact"
-            customClass={`kpi-card ${hasDiscrepancy ? 'kpi-card--alert' : 'kpi-card--ok'}`}
-          >
-            <span slot="subtitle">Missing from ESS</span>
-            <ModusWcTypography hierarchy="h2" size="3xl" weight="bold">
-              {String(missing)}
-            </ModusWcTypography>
-          </ModusWcCard>
-        </section>
-      )}
-
-      {/* --- Reconciliation diagnostic --- */}
-      {showResults && hasDiscrepancy && (
-        <ModusWcAlert
-          customClass="audit-alert"
-          variant="warning"
-          role="alert"
-          alertTitle={`${missing} of ${expected} expected pay stub${
-            expected === 1 ? '' : 's'
-          } not found in Employee Self-Service`}
-          alertDescription="These checks were processed by payroll but have not appeared in the portal. This is typically caused by Kafka encryption errors or Spectrum data-transmission issues that prevent the paystub from loading into ESS. Affected employees will not be able to view these paystubs until they are re-transmitted."
-        />
-      )}
-
-      {showResults && !hasDiscrepancy && (
-        <ModusWcAlert
-          customClass="audit-alert"
-          variant="success"
-          role="status"
-          alertTitle="All expected pay stubs were received in Employee Self-Service"
-          alertDescription="Every processed check for this criteria is available in the portal. Employees can view all of their paystubs — no transmission gaps detected."
-        />
-      )}
-
       {/* --- Results table --- */}
       {showResults && (
         <ModusWcCard bordered padding="comfortable" customClass="table-card">
-          <span slot="title">Results</span>
+          <span slot="title">Total Checks Found</span>
           <ModusWcTable
             columns={columns}
             data={tableData}
@@ -612,7 +551,7 @@ export default function PaystubAuditReport() {
         </div>
 
         <div slot="footer" className="paystub-actions">
-          <ModusWcButton color="secondary" variant="outlined" onButtonClick={closePaystub}>
+          <ModusWcButton color="neutral" variant="outlined" onButtonClick={closePaystub}>
             Close
           </ModusWcButton>
           <ModusWcButton
