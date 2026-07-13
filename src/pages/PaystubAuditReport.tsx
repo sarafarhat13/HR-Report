@@ -271,7 +271,7 @@ export default function PaystubAuditReport() {
       { id: 'employeeCode', header: 'Employee Code', accessor: 'employeeCode', sortable: true },
       {
         id: 'badges',
-        header: 'Badges',
+        header: 'Pay Type',
         accessor: 'payType',
         sortable: false,
         cellRenderer: (value) => renderBadges(String(value ?? '')),
