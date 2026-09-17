@@ -62,32 +62,30 @@ function renderBadges(payType: string): HTMLElement {
   return wrap;
 }
 
-const currency = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-});
+const PAYSTUB_CONFIRM_MODAL_ID = 'paystub-access-confirm-dialog';
 
-interface PaystubBreakdown {
-  gross: number;
-  federalTax: number;
-  stateTax: number;
-  socialSecurity: number;
-  medicare: number;
-  net: number;
-}
-
-/** Derives a deterministic earnings breakdown from a check so a paystub is
- *  stable every time the same check is opened. */
-function buildPaystub(check: CheckRecord): PaystubBreakdown {
-  const seed = Number(check.checkNumber) || 0;
-  const gross = 2500 + (seed % 4000);
-  const federalTax = Math.round(gross * 0.12 * 100) / 100;
-  const stateTax = Math.round(gross * 0.05 * 100) / 100;
-  const socialSecurity = Math.round(gross * 0.062 * 100) / 100;
-  const medicare = Math.round(gross * 0.0145 * 100) / 100;
-  const net =
-    Math.round((gross - federalTax - stateTax - socialSecurity - medicare) * 100) / 100;
-  return { gross, federalTax, stateTax, socialSecurity, medicare, net };
+/** Mock paystub PDF download (MVP — production would call a secured API). */
+function downloadPaystubPdf(check: CheckRecord): void {
+  console.log(
+    'Audit trail: paystub accessed — check %s, employee %s',
+    check.checkNumber,
+    check.employeeCode
+  );
+  const lines = [
+    'Paystub (demonstration document)',
+    `Check #: ${check.checkNumber}`,
+    `Check date: ${check.checkDate}`,
+    `Employee: ${check.employeeCode}`,
+    `Company: ${check.companyCode}`,
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `paystub-check-${check.checkNumber}.pdf`;
+  anchor.rel = 'noopener';
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function PaystubAuditReport() {
@@ -99,25 +97,30 @@ export default function PaystubAuditReport() {
   const [hasSearched, setHasSearched] = useState(false);
   // Bumped on reset to remount the (uncontrolled-text) search pickers cleanly.
   const [pickerResetKey, setPickerResetKey] = useState(0);
-  // The check whose paystub is currently open in the viewer modal.
-  const [selectedCheck, setSelectedCheck] = useState<CheckRecord | null>(null);
+  const [pendingCheck, setPendingCheck] = useState<CheckRecord | null>(null);
 
-  const PAYSTUB_MODAL_ID = 'paystub-viewer-dialog';
-
-  const openPaystub = useCallback((check: CheckRecord) => {
-    setSelectedCheck(check);
+  const openPaystubConfirm = useCallback((check: CheckRecord) => {
+    setPendingCheck(check);
     const dialog = document.getElementById(
-      PAYSTUB_MODAL_ID
+      PAYSTUB_CONFIRM_MODAL_ID
     ) as HTMLDialogElement | null;
     dialog?.showModal();
   }, []);
 
-  const closePaystub = useCallback(() => {
+  const closePaystubConfirm = useCallback(() => {
     const dialog = document.getElementById(
-      PAYSTUB_MODAL_ID
+      PAYSTUB_CONFIRM_MODAL_ID
     ) as HTMLDialogElement | null;
     dialog?.close();
+    setPendingCheck(null);
   }, []);
+
+  const confirmViewPaystub = useCallback(() => {
+    if (pendingCheck) {
+      downloadPaystubPdf(pendingCheck);
+    }
+    closePaystubConfirm();
+  }, [pendingCheck, closePaystubConfirm]);
 
   // Stable list of enterprises for the searchable picker. The ID lives in the
   // label so typing either the name or the ID narrows the built-in filter.
@@ -259,7 +262,7 @@ export default function PaystubAuditReport() {
           link.title = 'View paystub';
           link.addEventListener('click', (evt) => {
             evt.preventDefault();
-            openPaystub(row as CheckRecord);
+            openPaystubConfirm(row as CheckRecord);
           });
           return link;
         },
@@ -276,18 +279,12 @@ export default function PaystubAuditReport() {
         cellRenderer: (value) => renderBadges(String(value ?? '')),
       },
     ],
-    [openPaystub]
+    [openPaystubConfirm]
   );
 
   const rows = result?.rows ?? [];
   const showResults = hasSearched && rows.length > 0;
   const showEmptyState = hasSearched && rows.length === 0;
-
-  const selectedEmployeeName = selectedCheck
-    ? EMPLOYEES.find((e) => e.code === selectedCheck.employeeCode)?.name ??
-      selectedCheck.employeeCode
-    : '';
-  const paystub = selectedCheck ? buildPaystub(selectedCheck) : null;
 
   const tableData = useMemo<Record<string, unknown>[]>(
     () => (result?.rows ?? []).map((r: CheckRecord) => ({ ...r })),
@@ -446,122 +443,47 @@ export default function PaystubAuditReport() {
         </div>
       )}
 
-      {/* --- Paystub viewer --- */}
       <ModusWcModal
-        modalId={PAYSTUB_MODAL_ID}
-        customClass="paystub-modal"
+        modalId={PAYSTUB_CONFIRM_MODAL_ID}
         position="center"
-        aria-label="Paystub viewer"
+        aria-label="Confirm paystub access"
       >
-        <span slot="header">
-          Paystub{selectedCheck ? ` — Check #${selectedCheck.checkNumber}` : ''}
-        </span>
+        <ModusWcTypography
+          slot="header"
+          hierarchy="h2"
+          size="lg"
+          weight="semibold"
+          label="Confirm Paystub Access"
+        />
 
-        <div slot="content" className="paystub">
-          <div className="paystub-head">
-            <div>
-              <div className="paystub-company">
-                {selectedCheck ? `${selectedCheck.companyCode} Payroll` : ''}
-              </div>
-              <div className="paystub-doc">Employee Pay Statement</div>
-            </div>
-            <div className="paystub-check">
-              <div>
-                <span className="paystub-k">Check #</span>
-                <span className="paystub-v">{selectedCheck?.checkNumber ?? ''}</span>
-              </div>
-              <div>
-                <span className="paystub-k">Check Date</span>
-                <span className="paystub-v">{selectedCheck?.checkDate ?? ''}</span>
-              </div>
-            </div>
-          </div>
-
-          <dl className="paystub-meta">
-            <div>
-              <dt>Employee</dt>
-              <dd>
-                {selectedCheck
-                  ? `${selectedEmployeeName} (${selectedCheck.employeeCode})`
-                  : ''}
-              </dd>
-            </div>
-            <div>
-              <dt>Company Code</dt>
-              <dd>{selectedCheck?.companyCode ?? ''}</dd>
-            </div>
-            <div>
-              <dt>Check Type</dt>
-              <dd>{selectedCheck?.checkType ?? ''}</dd>
-            </div>
-            <div>
-              <dt>Pay Type</dt>
-              <dd>{selectedCheck?.payType ?? ''}</dd>
-            </div>
-          </dl>
-
-          <table className="paystub-table">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th className="paystub-amt">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Gross Earnings{selectedCheck ? ` (${selectedCheck.payType})` : ''}</td>
-                <td className="paystub-amt">
-                  {paystub ? currency.format(paystub.gross) : ''}
-                </td>
-              </tr>
-              <tr>
-                <td>Federal Income Tax</td>
-                <td className="paystub-amt">
-                  {paystub ? `-${currency.format(paystub.federalTax)}` : ''}
-                </td>
-              </tr>
-              <tr>
-                <td>State Income Tax</td>
-                <td className="paystub-amt">
-                  {paystub ? `-${currency.format(paystub.stateTax)}` : ''}
-                </td>
-              </tr>
-              <tr>
-                <td>Social Security</td>
-                <td className="paystub-amt">
-                  {paystub ? `-${currency.format(paystub.socialSecurity)}` : ''}
-                </td>
-              </tr>
-              <tr>
-                <td>Medicare</td>
-                <td className="paystub-amt">
-                  {paystub ? `-${currency.format(paystub.medicare)}` : ''}
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td>Net Pay</td>
-                <td className="paystub-amt">
-                  {paystub ? currency.format(paystub.net) : ''}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+        <div slot="content" className="paystub-confirm-content">
+          <ModusWcTypography hierarchy="p" size="md">
+            You are accessing sensitive payroll information. This action will be
+            logged in the audit trail with your account details, timestamp, and
+            IP address for compliance and security monitoring.
+          </ModusWcTypography>
+          <ModusWcTypography hierarchy="p" size="md" weight="semibold">
+            Are you sure you want to view this check?
+          </ModusWcTypography>
         </div>
 
-        <div slot="footer" className="paystub-actions">
-          <ModusWcButton color="neutral" variant="outlined" onButtonClick={closePaystub}>
-            Close
+        <div slot="footer" className="paystub-confirm-actions">
+          <ModusWcButton
+            color="tertiary"
+            variant="outlined"
+            size="sm"
+            onButtonClick={closePaystubConfirm}
+          >
+            Cancel
           </ModusWcButton>
           <ModusWcButton
             color="primary"
-            onButtonClick={() =>
-              console.log('Download PDF for check ' + selectedCheck?.checkNumber)
-            }
+            variant="filled"
+            size="sm"
+            onButtonClick={confirmViewPaystub}
           >
-            <ModusWcIcon name="download" size="sm" decorative />
-            Download PDF
+            <ModusWcIcon name="download" size="xs" decorative />
+            View Paystub
           </ModusWcButton>
         </div>
       </ModusWcModal>

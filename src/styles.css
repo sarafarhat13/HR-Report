@@ -331,115 +331,15 @@ body {
   display: block;
 }
 
-/* ---- Paystub viewer modal ---- */
-/* Size the dialog box to the paystub instead of the component's default width. */
-.paystub-modal .modus-wc-modal-box {
-  width: fit-content;
-  max-width: min(560px, 92vw);
-}
-
-.paystub {
+/* ---- Paystub access confirmation modal ---- */
+.paystub-confirm-content {
   display: flex;
   flex-direction: column;
   gap: var(--app-gap-4, 1rem);
-  width: 520px;
-  max-width: 100%;
+  max-width: 32rem;
 }
 
-.paystub-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid var(--app-border);
-}
-
-.paystub-company {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--app-text);
-}
-
-.paystub-doc {
-  font-size: 0.8125rem;
-  color: var(--app-text-secondary);
-}
-
-.paystub-check {
-  text-align: right;
-  font-size: 0.8125rem;
-}
-
-.paystub-check .paystub-k {
-  color: var(--app-text-secondary);
-  margin-right: 0.5rem;
-}
-
-.paystub-check .paystub-v {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.paystub-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem 1.5rem;
-  margin: 0;
-}
-
-.paystub-meta div {
-  display: flex;
-  flex-direction: column;
-}
-
-.paystub-meta dt {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--app-text-secondary);
-}
-
-.paystub-meta dd {
-  margin: 0;
-  font-weight: 600;
-  color: var(--app-text);
-}
-
-.paystub-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.paystub-table th,
-.paystub-table td {
-  padding: 0.5rem 0.25rem;
-  border-bottom: 1px solid var(--app-border);
-  text-align: left;
-}
-
-.paystub-table th {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--app-text-secondary);
-}
-
-.paystub-table .paystub-amt {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.paystub-table tfoot td {
-  font-weight: 700;
-  font-size: 1rem;
-  border-bottom: none;
-  border-top: 2px solid var(--app-border);
-  color: var(--app-text);
-}
-
-.paystub-actions {
+.paystub-confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--app-gap-3, 0.75rem);
