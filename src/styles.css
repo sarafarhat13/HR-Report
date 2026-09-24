@@ -336,6 +336,14 @@ body {
   gap: var(--app-gap-3, 0.75rem);
 }
 
+.audit-log-modal-header {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .audit-log-empty {
   padding: 2rem 1rem;
   text-align: center;

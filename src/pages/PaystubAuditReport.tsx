@@ -528,13 +528,23 @@ export default function PaystubAuditReport() {
         showClose
         aria-label="Paystub download audit log"
       >
-        <ModusWcTypography
-          slot="header"
-          hierarchy="h2"
-          size="lg"
-          weight="semibold"
-          label="Paystub download audit log"
-        />
+        <div slot="header" className="audit-log-modal-header">
+          <ModusWcButton
+            color="tertiary"
+            variant="borderless"
+            size="sm"
+            onButtonClick={closeAuditLogModal}
+          >
+            <ModusWcIcon name="chevron_left" size="xs" decorative />
+            Back
+          </ModusWcButton>
+          <ModusWcTypography
+            hierarchy="h2"
+            size="lg"
+            weight="semibold"
+            label="Paystub download audit log"
+          />
+        </div>
 
         <div slot="content" className="audit-log-modal-content">
           <div className="audit-log-panel">
