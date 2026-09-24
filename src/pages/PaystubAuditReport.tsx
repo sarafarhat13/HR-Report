@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import {
   ModusWcAutocomplete,
   ModusWcButton,
@@ -28,6 +28,13 @@ import {
   type CheckRecord,
   type SearchParams,
 } from '../data/mockData';
+import {
+  formatAuditTimestamp,
+  loadPaystubDownloadAuditLog,
+  recordPaystubDownload,
+  downloadPaystubAuditLogReport,
+  type PaystubDownloadAuditEntry,
+} from '../data/paystubAuditLog';
 
 const INITIAL_PARAMS: SearchParams = {
   enterpriseId: '',
@@ -63,14 +70,10 @@ function renderBadges(payType: string): HTMLElement {
 }
 
 const PAYSTUB_CONFIRM_MODAL_ID = 'paystub-access-confirm-dialog';
+const AUDIT_LOG_MODAL_ID = 'paystub-download-audit-log-dialog';
 
 /** Mock paystub PDF download (MVP — production would call a secured API). */
 function downloadPaystubPdf(check: CheckRecord): void {
-  console.log(
-    'Audit trail: paystub accessed — check %s, employee %s',
-    check.checkNumber,
-    check.employeeCode
-  );
   const lines = [
     'Paystub (demonstration document)',
     `Check #: ${check.checkNumber}`,
@@ -98,6 +101,23 @@ export default function PaystubAuditReport() {
   // Bumped on reset to remount the (uncontrolled-text) search pickers cleanly.
   const [pickerResetKey, setPickerResetKey] = useState(0);
   const [pendingCheck, setPendingCheck] = useState<CheckRecord | null>(null);
+  const [downloadAuditLog, setDownloadAuditLog] = useState<PaystubDownloadAuditEntry[]>(
+    () => loadPaystubDownloadAuditLog()
+  );
+
+  const openAuditLogModal = useCallback(() => {
+    const dialog = document.getElementById(AUDIT_LOG_MODAL_ID) as HTMLDialogElement | null;
+    dialog?.showModal();
+  }, []);
+
+  const closeAuditLogModal = useCallback(() => {
+    const dialog = document.getElementById(AUDIT_LOG_MODAL_ID) as HTMLDialogElement | null;
+    dialog?.close();
+  }, []);
+
+  const handleDownloadAuditReport = useCallback(() => {
+    downloadPaystubAuditLogReport(downloadAuditLog);
+  }, [downloadAuditLog]);
 
   const openPaystubConfirm = useCallback((check: CheckRecord) => {
     setPendingCheck(check);
@@ -118,9 +138,11 @@ export default function PaystubAuditReport() {
   const confirmViewPaystub = useCallback(() => {
     if (pendingCheck) {
       downloadPaystubPdf(pendingCheck);
+      const entry = recordPaystubDownload(pendingCheck, role);
+      setDownloadAuditLog((prev) => [entry, ...prev]);
     }
     closePaystubConfirm();
-  }, [pendingCheck, closePaystubConfirm]);
+  }, [pendingCheck, closePaystubConfirm, role]);
 
   // Stable list of enterprises for the searchable picker. The ID lives in the
   // label so typing either the name or the ID narrows the built-in filter.
@@ -291,16 +313,72 @@ export default function PaystubAuditReport() {
     [result]
   );
 
+  const auditLogColumns = useMemo<ITableColumn[]>(
+    () => [
+      {
+        id: 'downloadedAt',
+        header: 'Downloaded on',
+        accessor: 'downloadedAtDisplay',
+        sortable: true,
+      },
+      {
+        id: 'downloadedBy',
+        header: 'Downloaded by',
+        accessor: 'downloadedBy',
+        sortable: true,
+      },
+      {
+        id: 'checkNumber',
+        header: 'Check number',
+        accessor: 'checkNumber',
+        sortable: true,
+      },
+      {
+        id: 'checkDate',
+        header: 'Check date',
+        accessor: 'checkDate',
+        sortable: true,
+      },
+      { id: 'employeeCode', header: 'Employee', accessor: 'employeeCode', sortable: true },
+      { id: 'companyCode', header: 'Company', accessor: 'companyCode', sortable: true },
+    ],
+    []
+  );
+
+  const auditLogTableData = useMemo<Record<string, unknown>[]>(
+    () =>
+      downloadAuditLog.map((entry) => ({
+        ...entry,
+        downloadedAtDisplay: formatAuditTimestamp(entry.downloadedAt),
+      })),
+    [downloadAuditLog]
+  );
+
   return (
     <div className="report-page">
       <header className="report-header">
-        <ModusWcTypography hierarchy="h1" size="2xl" weight="bold">
-          Paystub Check Audit Report
-        </ModusWcTypography>
-        <ModusWcTypography hierarchy="p" size="sm" customClass="report-subtitle">
-          Cross-reference generated checks against what loaded into Employee
-          Self-Service (ESS) to quickly surface missing paystubs.
-        </ModusWcTypography>
+        <div className="report-header-lead">
+          <ModusWcTypography hierarchy="h1" size="2xl" weight="bold">
+            Paystub Check Audit Report
+          </ModusWcTypography>
+          <ModusWcTypography hierarchy="p" size="sm" customClass="report-subtitle">
+            Cross-reference generated checks against what loaded into Employee
+            Self-Service (ESS) to quickly surface missing paystubs.
+          </ModusWcTypography>
+        </div>
+        <div className="report-header-actions">
+          <ModusWcButton
+            color="tertiary"
+            variant="outlined"
+            size="sm"
+            type="button"
+            onButtonClick={openAuditLogModal}
+          >
+            <ModusWcIcon name="document" size="xs" decorative />
+            Paystub download audit log
+            {downloadAuditLog.length > 0 ? ` (${downloadAuditLog.length})` : ''}
+          </ModusWcButton>
+        </div>
       </header>
 
       {/* --- Search parameters --- */}
@@ -309,7 +387,7 @@ export default function PaystubAuditReport() {
         <form
           className="search-form"
           noValidate
-          onSubmit={(e) => {
+          onSubmit={(e: FormEvent) => {
             e.preventDefault();
             handleRun();
           }}
@@ -442,6 +520,82 @@ export default function PaystubAuditReport() {
           </ModusWcTypography>
         </div>
       )}
+
+      <ModusWcModal
+        modalId={AUDIT_LOG_MODAL_ID}
+        fullscreen
+        position="top"
+        showClose
+        aria-label="Paystub download audit log"
+      >
+        <ModusWcTypography
+          slot="header"
+          hierarchy="h2"
+          size="lg"
+          weight="semibold"
+          label="Paystub download audit log"
+        />
+
+        <div slot="content" className="audit-log-modal-content">
+          <div className="audit-log-panel">
+            <ModusWcTypography hierarchy="p" size="sm" customClass="report-subtitle">
+              Track record of paystub PDFs downloaded from this report, including when
+              each file was accessed and which admin account initiated the download.
+            </ModusWcTypography>
+
+            {downloadAuditLog.length === 0 ? (
+              <div className="audit-log-empty audit-log-empty--modal">
+                <ModusWcTypography hierarchy="p" size="md" customClass="report-subtitle">
+                  No paystub downloads recorded yet. Confirm and view a check from the
+                  results table to add an entry.
+                </ModusWcTypography>
+              </div>
+            ) : (
+              <>
+                <div className="audit-log-table-toolbar">
+                  <ModusWcButton
+                    color="primary"
+                    variant="filled"
+                    size="sm"
+                    onButtonClick={handleDownloadAuditReport}
+                  >
+                    <ModusWcIcon name="export" size="xs" decorative />
+                    Download report
+                  </ModusWcButton>
+                </div>
+                <div className="audit-log-table-section">
+                  <ModusWcTable
+                    columns={auditLogColumns}
+                    data={auditLogTableData}
+                    sortable
+                    paginated
+                    showPageSizeSelector
+                    pageSizeOptions={[10, 25, 50]}
+                    density="comfortable"
+                    zebra={false}
+                    hover={false}
+                    customClass="audit-log-table-host"
+                    caption={`${downloadAuditLog.length} paystub download${
+                      downloadAuditLog.length === 1 ? '' : 's'
+                    } recorded this browser session`}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div slot="footer" className="audit-log-modal-footer">
+          <ModusWcButton
+            color="tertiary"
+            variant="outlined"
+            size="sm"
+            onButtonClick={closeAuditLogModal}
+          >
+            Close
+          </ModusWcButton>
+        </div>
+      </ModusWcModal>
 
       <ModusWcModal
         modalId={PAYSTUB_CONFIRM_MODAL_ID}

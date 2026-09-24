@@ -26,9 +26,13 @@ support tickets.
 - **KPI summary cards** (`modus-wc-card`, compact padding, `gap-3` spacing):
   Total Expected Checks and Checks Found in ESS.
 - **Results table** (`modus-wc-table`) with sorting + pagination:
-  - Interactive `Check Number` link (logs `Download PDF for check <id>`).
+  - Interactive `Check Number` link (opens confirm dialog, then downloads a demo PDF).
   - `Badges` column mapping pay-type keywords to `modus-wc-chip`s
     (`Bonus`, `Final Pay`) with `show-remove="false"`.
+- **Paystub download audit log** — opens in a **fullscreen modal** from the page
+  header. Records each confirmed paystub download (timestamp, admin, check
+  details). **Download report** exports the log as CSV (`sessionStorage` in
+  the MVP).
 - **Empty state** — hides the cards/table and shows *"No results have been
   found."* via `modus-wc-typography`.
   - Tip: enter Company Code `EMPTY` to preview this state.
@@ -50,7 +54,7 @@ support tickets.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
+npm run dev      # http://localhost:5180 (Paystub Audit Report — not 5173)
 npm run build    # type-check + production build to dist/
 npm run preview  # preview the production build locally
 npm run lint
@@ -96,4 +100,5 @@ src/
     PaystubAuditReport.tsx     # form, KPI cards, table, empty state
   data/
     mockData.ts                # deterministic audit query + types
+    paystubAuditLog.ts         # download audit log (session persistence)
 ```
